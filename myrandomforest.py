@@ -14,12 +14,14 @@ from sklearn.grid_search import RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 
+# 这个函数好像没什么用
 def scoreForest(estimator, X, y):
     score = estimator.oob_score_
     print 'oob_score_:', score
     return score
 
 if __name__ == '__main__':
+    #　因为用的是ＲＦ，所以就没有用ＰＣＡ。 没有进行负采样，这是为何？
     input_df, submit_df = dataProcess.getDataSets(bins = True, scaled = True, binary = True)
 
     submit_ids = submit_df['PassengerId']
@@ -34,15 +36,16 @@ if __name__ == '__main__':
 
     print 'Rough fitting a RandomForest to determine feature importance...'
     forest = RandomForestClassifier(oob_score = True, n_estimators = 10000)
-    forest.fit(X, y, sample_weight = y_weights)
+    forest.fit(X, y, sample_weight = y_weights) #　为每个样本设置权重
     feature_importance = forest.feature_importances_
     feature_importance = 100.0 * (feature_importance / feature_importance.max())
 
+    # 画出权重大于18的特征权重图，之所以是18，看上一句。
     fi_threshold = 18
     important_idx = np.where(feature_importance > fi_threshold)[0]
     important_features = features_list[important_idx]
     print '\n', important_features.shape[0], 'Important features(>', fi_threshold, '% of max importance)...\n'
-    sorted_idx = np.argsort(feature_importance[important_idx])[::-1]
+    sorted_idx = np.argsort(feature_importance[important_idx])[::-1] #　逆序，变为从大到小
 
     pos = np.arange(sorted_idx.shape[0]) + .5
     plt.subplot(1, 2, 2)
@@ -53,7 +56,7 @@ if __name__ == '__main__':
     plt.draw()
     plt.show()
 
-    X = X[:, important_idx][:, sorted_idx]
+    X = X[:, important_idx][:, sorted_idx] # 对选中的重要特征进行排序？
 
 
     submit_df = submit_df.iloc[:, important_idx].iloc[:, sorted_idx]
@@ -67,14 +70,14 @@ if __name__ == '__main__':
                      'min_samples_split' : minsampsplit }
     params = params_score
     print 'Generating RandomForestClassifier model with parameters: ', params
-    forest = RandomForestClassifier(n_jobs = -1, oob_score = True, **params)
+    forest = RandomForestClassifier(n_jobs = -1, oob_score = True, **params) # 两个星号，什么意思？
 
     print '\nFitting model 5 times to get mean OOB score using full training data with class weights...'
     test_scores = []
 
     for i in range(5):
         forest.fit(X, y, sample_weight = y_weights)
-        print 'OOB:', forest.oob_score_
+        print 'OOB:', forest.oob_score_ #　Score of the training dataset obtained using an out-of-bag estimate.
         test_scores.append(forest.oob_score_)
     oob = ('%.3f' % (np.mean(test_scores))).lstrip('0')
     oob_std = ('%.3f' % (np.std(test_scores))).lstrip('0')
@@ -90,7 +93,7 @@ if __name__ == '__main__':
     print 'Died/Survived: ', ".3f" % (1-submission[:, 1].mean()), '/', srv_pct
 
 
-    output = submission[submission[:, 0].argsort()]
+    output = submission[submission[:, 0].argsort()] # 这一条有什么作用？
 
 
     name = 'rfc' + str(int(time.time())) + '.csv'
@@ -98,7 +101,7 @@ if __name__ == '__main__':
     predictions_file = open('./' + name, 'wb')
     open_file_object = csv.writer(predictions_file)
     open_file_object.writerow(['PassengerId', 'Survived'])
-    open_file_object.writerows(output)
+    open_file_object.writerows(output) #　将结果写入文件
 
     print 'Done.'
 
